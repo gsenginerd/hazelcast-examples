@@ -29,71 +29,25 @@ public class OpportunityPipeline {
 	 */
 	public static void main(String[] args) {
 
-		Configuration config = Configuration.empty();
-
-		SqlServerConnector sqlConnector = new SqlServerConnector();
-
-		// Builder<ChangeRecord> builder = DebeziumCdcSources.debezium("sf_opportunity",
-		// sqlConnector.getClass());
-		Builder<ChangeRecord> builder = DebeziumCdcSources.debezium("sf_opportunity",
+		DebeziumCdcSources.Builder<ChangeRecord> builder = DebeziumCdcSources.debezium("debezium-sqlserver-connector",
 				"io.debezium.connector.sqlserver.SqlServerConnector");
-
-		builder.setProperty("database.hostname", "host.docker.internal");
+		builder.setProperty("connector.class", "io.debezium.connector.sqlserver.SqlServerConnector");
+		builder.setProperty("database.hostname", "WLA-GSUBT14");
 		builder.setProperty("database.port", "1433");
-		builder.setProperty("database.user", "ccdba");
-		builder.setProperty("database.password", "SForcedev1");
-		builder.setProperty("database.servername", "WLA-GSUBT14");
+		builder.setProperty("database.user", "sa");
+		builder.setProperty("database.password", "P@ssword");
 		builder.setProperty("database.dbname", "CONFLICT_CHECK");
-		builder.setProperty("database.whitelist", "CONFLICT_CHECK");
-		builder.setProperty("table.whitelist", "dbo.SF_OPPORTUNITY__C");
-		
-		/*
-		 * builder.setProperty("topic.creation.enable", "true");
-		 * builder.setProperty("topic.prefix", "opportunity");
-		 * builder.setProperty("include.schema.changes", "false");
-		 */
-		/*
-		 * builder.setProperty("schema.history.internal.kafka.bootstrap.servers",
-		 * "kafka:9092"); builder.setProperty("schema.history.internal.kafka.topic",
-		 * "schemahistory.opportunity");
-		 */
-
-		/*
-		 * builder.setProperty("topic", "CONFLICT_CHECK.dbo.SF_OPPORTUNITY__C");
-		 * builder.setProperty("topic.prefix", "cc-sf-opportunity");
-		 * 
-		 */
+		builder.setProperty("table.whitelist", "dbo.SF_OPPORTUNITY");
+		builder.setProperty("database.server.name", "sqlserver");
 
 		StreamSource<ChangeRecord> source = builder.build();
 
 		Pipeline pipeline = Pipeline.create();
+		pipeline.readFrom(source).withoutTimestamps().writeTo(Sinks.logger());
 
-		// The CdcSinks is running into errors for Kafka properties
-
-		pipeline.readFrom(source).withoutTimestamps().peek().writeTo(CdcSinks.map("sf_opportunity",
-				r -> r.key().toMap().get("id"), r -> r.value().toObject(Opportunity.class).name));
-
-		// Use alternate mapWithUpdating as a trial. Looks like this is only called for
-		// an update
-		// https://docs.hazelcast.com/hazelcast/5.2/integrate/map-connector#map-as-a-sink
-
-		/*
-		 * pipeline.readFrom(Sources.<String, Opportunity>map("sf_opportunity"))
-		 * .writeTo(Sinks.mapWithUpdating("sf_opportunity_cache", e -> e.getKey(),
-		 * (oldValue, entry) -> (oldValue != null ?
-		 * oldValue.getDetails(entry.getValue()) : null)));
-		 */
-
-		JobConfig cfg = new JobConfig().setName("sf-opportunity-monitor");
+		JobConfig cfg = new JobConfig().setName("SQLServer-Monitor");
 		HazelcastInstance hz = Hazelcast.bootstrappedInstance();
-
-		// Delete map if exists
-		IMap<Integer, Object> sfOpportunityMap = hz.getMap("sf_opportunity");
-		if (sfOpportunityMap != null)
-			sfOpportunityMap.destroy();
-
 		hz.getJet().newJob(pipeline, cfg);
-
 	}
 
 }
