@@ -4,7 +4,7 @@
 	<groupId>enginerds</groupId>
 	<artifactId>enginerds-hazelcast-cdc-sql-debezium</artifactId>
 	<version>1.0-SNAPSHOT</version>
-	<name>enginerds-hazelcast-cdc-sql</name>
+	<name>cdc-sql-debezium</name>
 
 	<properties>
 		<maven.compiler.target>1.8</maven.compiler.target>
